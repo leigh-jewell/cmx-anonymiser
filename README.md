@@ -130,12 +130,12 @@ Refer to the CMX API for details on what each field represents:
 #### File: user_data
 This will be in CSV format but I have written it here by rows for easy reading.
 > hash = abfc33006cfc08577dbc697540c0dbcd2cd8c962699b422e9d7cb677e537490f9   
-> mapHierarchyString = CiscoCampus>Building 9>IDEAS!>Kistler   
-> floorRefId = 723413320329068650   
+> mapHierarchyString = DevNet  
+> floorRefId = 723413321239068650   
 > length = 74.1     
 > width = 39.0   
-> x = 11.29309   
-> y = 69.07972   
+> x = 12.29309   
+> y = 67.07972   
 > unit = FEET   
 > currentlyTracked = True   
 > confidenceFactor = 64.0   
@@ -150,15 +150,15 @@ This will be in CSV format but I have written it here by rows for easy reading.
 > changedOn = 1503968268115   
 > ssId = test   
 > band = IEEE_802_11_B    
-> apMacAddress = 00:2b:01:00:08:00   
+> apMacAddress = 0f:3b:01:c0:08:20   
 > dot11Status = ASSOCIATED   
 > manufacturer = Trw   
-> detectingControllers = 10.10.20.90   
+> detectingControllers = 1.1.1.1
 > bytesSent = 110   
 > bytesReceived = 100   
 
 #### File: ap_data
-> radioMacAddress = 00:2b:01:00:08:00   
+> radioMacAddress = 0f:3b:01:c0:08:20   
 > name = T1-7   
 > x = 3.5704226   
 > y = 69.43445   
@@ -170,10 +170,10 @@ This will be in CSV format but I have written it here by rows for easy reading.
 > floorId = 723413320329068650   
 
 ### Issues
-Testing on CMX 10.3 I was not consistently able to get results from the
+Testing on CMX 10.3, I was not consistently able to get results from the
 API call /api/location/v2/clients. Sometimes I would get a 204 result
-returned. I changed the API to /api/location/v1/clients and am now
-consistently getting data returned. I can't find any documentation
+returned. I changed the API to /api/location/v1/clients and now
+consistently get data returned. I can't find any documentation
 to explain this but it works at the moment.
 
 ---
