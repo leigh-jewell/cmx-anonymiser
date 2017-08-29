@@ -1,11 +1,18 @@
 # cmx-anonymiser
 ---
-A Cisco CMX polls Cisco Wireless LAN Controllers for metrics on wireless
-clients that are heard by wireless Access Points (APs). Some of this
-information such as RSSI and bytes sent/received can be interesting to
-use for wireless performance metrics. This program uses the very
-versatile CMX API to pull client and AP data, anonymise any personal information
-such as mac-address and store the results in csv files for later processing.
+This program uses an API to pull wireless client and Access Point (AP) data
+from a Cisco CMX appliance. The Cisco CMX polls Cisco Wireless LAN Controllers
+for metrics on wireless clients that are heard by wireless Access Points (APs).
+Information such as RSSI and bytes sent/received can be interesting to
+use for wireless performance metrics on your network.
+
+As some of the data contains personal information such as username, ip address
+and mac-address the program anonymises any personal information using a one-way
+SHA256 hash. This allows for the data to be tokenised but anonymous to
+ensure privacy is maintained. The results are stored in csv files for later
+processing.
+
+A
 
 ## Getting started
 ---
@@ -17,9 +24,9 @@ This will download two files:
 > cmx-anonymiser.py - this is the python script that you will run   
 > config.ini - this file contains all the configurable settings for the script  
 
-When you run the file it will create two more directories:  
-output - where the csv files are written to  
-logs - all the logs from the running of the script  
+When you run the program it will create two more directories:  
+> output - where the csv files are written to  
+> logs - all the logs from the running of the script  
 
 ## Prerequisites
 ---
@@ -28,7 +35,7 @@ a number of modules which you will need to have installed into your python
 installation:
 
 | Module        | Purpose                                         |
-| ------------- |:-----------------------------------------------:|
+| ------------- |-------------------------------------------------|
 |configparser   | Read in the config file                         |
 |requests       | Nice URL module to access CMX API               |
 |requests.auth  | The HTTP authentication part of requests        |
@@ -40,14 +47,15 @@ installation:
 | sched         | For scheduling the jobs to run                  |
 |time           | For time                                        |
 
-You can simply install them with: pip install <module name>
+You can simply install them with:
+> pip install <module name>
 
 ## Installation and setup
 ---
 The config.ini file contains all the configurable settings to control how
 this script will run.
 
-### CMX Hostname, username, password
+### CMX Hostname, username and password
 The very minimum changes you will need to make will be to point the script
 to your CMX server either by ip address or hostname and add in
 a username/password to access it. You will need create that account on your
@@ -60,7 +68,7 @@ and logs folder. You can change this behaviour to write it somewhere else. You
 can also set log_console to tell the script to write logs to the console
 if you are testing it out.
 
-#### API URLs
+### API URLs
 There are two API's which are used and this can be changed to something else.
 This is more for if the CMX code is changed and you need to point it to
 a new API and perhaps if you want to tweak options. The code is specifically
@@ -68,7 +76,7 @@ written to look for a known JSON response. url_clients is to get the current
 active clients that the CMX knows about and url_aps gets the current list of
 aps.
 
-#### Schedule
+### Schedule
 You tell the script how many days and how often you want to poll it. The days is
 simply the number of days to poll and hours is a list of 24hr times to
 get the data from CMX.
@@ -85,7 +93,7 @@ easily. Obviously keep the salt private when sharing the CSV file. The salt
 is just a string so make it whatever you want.
 
 | Config      | Purpose                                           |
-|-------------|:-------------------------------------------------:|
+|-------------|---------------------------------------------------|
 | cmx_ip      |Change it to your CMX MSE IP address or hostname   |
 | username    | Username that exists on the CMX                   |
 | password    | Password for the account on the CMX               |
@@ -111,22 +119,22 @@ If console logging is enabled you will see the output on the console as it
 pulls down the data and writes the csv files.
 
 Example output:
-> $ python cmx-anonymiser.py
-> 29/08/17 10:57.44.138577: main: Process started, scheduling jobs 7 days and now hours
-> 29/08/17 10:57.44.166156: getData: Process woken up.
-> 29/08/17 10:57.44.167660: getData:Using CMX:cmxlocationsandbox.cisco.com and username:learning
-> 29/08/17 10:57.44.169164: getCMXAPData: Getting data for: http://cmxlocationsandbox.cisco.com/api/config/v1/aps
-> 29/08/17 10:57.46.298581: getCMXAPData: Got status code 200 from CMX API (200 is good)
-> 29/08/17 10:57.46.298581: getCMXAPData: Got 9 ap records from CMX.
-> 29/08/17 10:57.46.298581: writeFile:Using output as output directory
-> 29/08/17 10:57.46.333839: writeFile:Finished writing.
-> 29/08/17 10:57.46.336848: getCMXData: Getting data for:http://cmxlocationsandbox.cisco.com/api/location/v1/clients
-> 29/08/17 10:57.51.102041: getCMXData: Got status code 200 from CMX API (200 is good)
-> 29/08/17 10:57.51.120462: getCMXData: Got 79 records from CMX.
-> 29/08/17 10:57.51.120462: writeFile:Using output as output directory
-> 29/08/17 10:57.51.149306: writeFile:Finished writing.
-> 29/08/17 10:57.51.151312: getData: Process sleeping.
-> 29/08/17 10:57.51.152316: main: Finished scheduled runs.
+> $ python cmx-anonymiser.py   
+> 29/08/17 10:57.44.138577: main: Process started, scheduling jobs 7 days and now hours   
+> 29/08/17 10:57.44.166156: getData: Process woken up.   
+> 29/08/17 10:57.44.167660: getData:Using CMX:cmxlocationsandbox.cisco.com and username:learning   
+> 29/08/17 10:57.44.169164: getCMXAPData: Getting data for: http://cmxlocationsandbox.cisco.com/api/config/v1/aps   
+> 29/08/17 10:57.46.298581: getCMXAPData: Got status code 200 from CMX API (200 is good)   
+> 29/08/17 10:57.46.298581: getCMXAPData: Got 9 ap records from CMX.   
+> 29/08/17 10:57.46.298581: writeFile:Using output as output directory   
+> 29/08/17 10:57.46.333839: writeFile:Finished writing.   
+> 29/08/17 10:57.46.336848: getCMXData: Getting data for:http://cmxlocationsandbox.cisco.com/api/location/v1/clients   
+> 29/08/17 10:57.51.102041: getCMXData: Got status code 200 from CMX API (200 is good)   
+> 29/08/17 10:57.51.120462: getCMXData: Got 79 records from CMX.   
+> 29/08/17 10:57.51.120462: writeFile:Using output as output directory   
+> 29/08/17 10:57.51.149306: writeFile:Finished writing.   
+> 29/08/17 10:57.51.151312: getData: Process sleeping.   
+> 29/08/17 10:57.51.152316: main: Finished scheduled runs.   
 
 ### Output CSV files
 ---
@@ -176,8 +184,8 @@ Refer to the CMX API for details on what each field represents:
 
 ### Issues
 Testing on CMX 10.3 I was not consistently able to get results from the
-API call /api/location/v2/clients. Sometimes I would get a 204 [no content]
-return. I changed the API to /api/location/v1/clients and am now
+API call /api/location/v2/clients. Sometimes I would get a 204 result
+returned. I changed the API to /api/location/v1/clients and am now
 consistently getting data returned. I can't find any documentation
 to explain this but it works at the moment.
 
@@ -186,7 +194,7 @@ to explain this but it works at the moment.
 Leigh Jewell
 
 ### License
-This project is licensed under the MIT License - see the [LICENSE.md] (https://github.com/leigh-jewell/cmx-anonymiser/blob/master/LICENSE)
+This project is licensed under the MIT License - see the [LICENSE.md](https://github.com/leigh-jewell/cmx-anonymiser/blob/master/LICENSE)
 file for details.
 
 ### Acknowledgments
