@@ -1,22 +1,33 @@
 # Author Leigh Jewell
-import configparser
-import requests
-# Ignore HTTPS warnings if they appear
-from requests.packages.urllib3.exceptions import InsecureRequestWarning
-requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
-from requests.auth import HTTPBasicAuth
-from collections import defaultdict
-import csv
-import hashlib
-from datetime import datetime
-from datetime import timedelta
-import os
-import sched, time
+# License https://github.com/leigh-jewell/cmx-anonymiser/blob/master/LICENSE
+# Github repository: https://github.com/leigh-jewell/cmx-anonymiser
+
+# Try and load in all the required modules.
+try:
+    import sys
+    import configparser
+    import requests
+    # Ignore HTTPS warnings if they appear
+    from requests.packages.urllib3.exceptions import InsecureRequestWarning
+    requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+    from requests.auth import HTTPBasicAuth
+    from collections import defaultdict
+    import csv
+    import hashlib
+    from datetime import datetime
+    from datetime import timedelta
+    import os
+    import sched, time
+except ImportError:
+    print('Error: Missing one of the required modules. Check the docs.')
+    sys.exit()
 
 #Constants
+# CMX API URL prefix, could be changed to https://
 url_prefix = "http://"
 
 #Read configuration from config.ini file into global variables
+#Expects to find is in the same directory as the program file
 config = configparser.ConfigParser()
 if os.path.isfile("config.ini"):
     try:
@@ -35,13 +46,13 @@ if os.path.isfile("config.ini"):
         salt = config.get('privacy', 'salt', fallback='b1303114888c11e79e6a448500844918')
         configError = False
     except configparser.Error as e:
-        print("Error with config.ini: ", e)
+        print("Error with config.ini, missing part of the file: ", e)
         configError = True
 else:
     print("config.ini missing from current directory.")
     configError = True
 
-# Setup logging
+# Setup the path and filename for the log file
 if not os.path.exists(log_dir):
     try:
         os.makedirs(log_dir)
@@ -52,6 +63,8 @@ logFile = 'cmx' + datetime.strftime(datetime.now(),'-%d-%m-%y-%H-%M.log')
 fulllogFile = os.path.join(log_dir, logFile)
 
 def logging(info):
+    # Setup logging to a file and console
+    # Create a unique name with the date and time
     dateStamp = datetime.strftime(datetime.now(),'%d/%m/%y %H:%M.%S.%f: ') + info
     if log_console:
         print(dateStamp)
@@ -69,15 +82,20 @@ def deidentifyMac(mac):
     return mac_hashed
 
 def getCMXData():
+    # API call to get the client data from the CMX
     URL = url_prefix + cmx + url_clients
     logging('getCMXData: Getting data for:{}'.format(URL))
+    # Setup a defaultdict so we can reference keys without errors
     response_dict = defaultdict(list)
     try:
+        # Send a URL API request to the CMX with a username and password
         response = requests.get(url = URL, auth = HTTPBasicAuth(username, password), verify=False)
+        # Check the status code of the result to see if we got something
         logging('getCMXData: Got status code {} from CMX API (200 is good)'.format(response.status_code))
         response_dict['statusCode'] = response.status_code
         if response.status_code == 200:
             response.encoding = 'utf-8'
+            # Add a header for all the variables
             response_dict['data'].append(['hash',
                                          'mapHierarchyString',
                                           'floorRefId',
@@ -106,6 +124,7 @@ def getCMXData():
                                           'bytesSent',
                                           'bytesReceived'
                                          ])
+            # Step through the JSON response pulling out the data
             for client in response.json():
                 response_dict['data'].append([deidentifyMac(client['macAddress']), \
                                               client['mapInfo']['mapHierarchyString'], \
@@ -135,6 +154,7 @@ def getCMXData():
                                               client['bytesSent'], \
                                               client['bytesReceived']
                                              ])
+            # We minus 1 due to header that was added to file
             logging('getCMXData: Got {} records from CMX.'.format(len(response_dict['data'])-1))
             response_dict['isError'] = False
     except requests.exceptions.RequestException as e:
@@ -144,6 +164,7 @@ def getCMXData():
     return response_dict
 
 def getCMXAPData():
+    # Get the AP data from the CMX
     URL = url_prefix + cmx + url_aps
     logging('getCMXAPData: Getting data for: {}'.format(URL))
     response_dict = defaultdict(list)
@@ -225,6 +246,7 @@ def writeFile(data, fileName):
     return
 
 def getData():
+    # This is the function that gets call by the scheduler
     logging('getData: Process woken up.')
     logging('getData:Using CMX:{} and username:{}'.format(cmx, username))
 
@@ -243,13 +265,17 @@ def getData():
     return
 
 def main():
+    # Make sure we read in the config file ok.
     if not configError:
         logging("main: Process started, scheduling jobs {} days and {} hours".format(days, schedule))
+        # If we find now string in schdule we just run one straight away.
         if 'now' in schedule:
             getData()
         else:
             s = sched.scheduler(time.time, time.sleep)
+            # Step through all the scheduled 24hr times
             sched_time = [i.split(':') for i in schedule.split(',')]
+            # Need current time as scheduler wants to know how many secs to run the function
             today = datetime.now()
             # Convert days str into integer
             days_int = int(days)
