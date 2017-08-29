@@ -42,15 +42,15 @@ installation:
 |time           | For time                                        |
 
 You can simply install them with:
-> pip install <module name>
+> pip install *module name*
 ## Installation and setup
 The config.ini file contains all the configurable settings to control how
 this script will run.
 ### CMX Hostname, username and password
 The very minimum changes you will need to make will be to point the script
 to your CMX server either by ip address or hostname and add in
-a username/password to access it. You will need create that account on your
-CMX MSE so the script can connect via the API. By default the Cisco DevNet
+a username/password to access it. You will need create an account on your
+CMX so the script can connect via the API. By default the Cisco DevNet
 sandbox CMX and username/password has been added so you can test it out.
 ### Output Directory
 By default the output will be written to the current working directory output
@@ -59,24 +59,26 @@ can also set log_console to tell the script to write logs to the console
 if you are testing it out.
 ### API URLs
 There are two API's which are used and this can be changed to something else.
-This is more for if the CMX code is changed and you need to point it to
-a new API and perhaps if you want to tweak options. The code is specifically
-written to look for a known JSON response. url_clients is to get the current
-active clients that the CMX knows about and url_aps gets the current list of
-aps.
+This is more for when the CMX code is changed and you need to point it to a new
+API in the future. The code is specifically written to look for known JSON
+responses for these API calls to get the current active clients and aps. If you
+use another different API you will need to modify the code to work. Possibly
+in the future would be to write code that automatically puts the API return
+into a CSV file.
 ### Schedule
-You tell the script how many days and how often you want to poll it. The days is
-simply the number of days to poll and hours is a list of 24hr times to
-get the data from CMX.
+You tell the program how many days and how often you want to poll the CMX. The
+days is simply the number of days to poll and hours is a list of 24hr times to
+get the data from CMX. Keep in mind the API calls will impact the CMX so
+don't add to many in.
 ### Privacy and anonymisation
 Most of the personal information is discarded that is returned from the CMX but
 we need to retain the mac-address of the client in some form so we can
 connect all the returned data to the same client. To avoid any personal
 information from been collected the mac-address is converted to a one-way hash
 using SHA256. To avoid collisions and ensure the mac-address remains private
-a salt is also added to the string. This can ensure that if you give out
-the CSV files to a 3rd party that they can't simply brute force the mac
-easily. Obviously keep the salt private when sharing the CSV file. The salt
+a salt is also added to the string. This ensures that if you give out
+the CSV files to a 3rd party that they can't easily brute force the mac addfress.
+Obviously keep the salt private when sharing the CSV file. The salt
 is just a string so make it whatever you want.
 
 | Config      | Purpose                                           |
@@ -95,8 +97,8 @@ is just a string so make it whatever you want.
 | salt        | Random string to avoid hash collisions            |
 
 ## Running a test
-Even without changing the config.ini you can test out the code. The config
-file is pointing to a Cisco CMX server in a sandbox and as long as this
+Even without changing the config.ini you can test out the code as the default config
+file is pointing to a Cisco CMX server in a DevNet sandbox and as long as this
 server is reachable the test should run.
 > python cmx-anonymiser.py
 
@@ -126,6 +128,7 @@ Refer to the CMX API for details on what each field represents:
 [CMX API 10.3 ref](https://www.cisco.com/c/en/us/td/docs/wireless/mse/10-3/api/b_cmx_103_api_reference/location.html)
 
 #### File: user_data
+This will be in CSV format but I have written it here by rows for easy reading.
 > hash = abfc33006cfc08577dbc697540c0dbcd2cd8c962699b422e9d7cb677e537490f9   
 > mapHierarchyString = CiscoCampus>Building 9>IDEAS!>Kistler   
 > floorRefId = 723413320329068650   
