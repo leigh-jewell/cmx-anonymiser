@@ -168,22 +168,17 @@ This will be in CSV format but I have written it here by rows for easy reading.
 > 802_11_AChannelNumber = 64   
 > 802_11_ATxPowerLevel = 5   
 > floorId = 723413320329068650   
-
 ### Issues
 Testing on CMX 10.3, I was not consistently able to get results from the
 API call /api/location/v2/clients. Sometimes I would get a 204 result
 returned. I changed the API to /api/location/v1/clients and now
 consistently get data returned. I can't find any documentation
 to explain this but it works at the moment.
-
----
 ### Authors
 Leigh Jewell
-
 ### License
 This project is licensed under the MIT License - see the [LICENSE.md](https://github.com/leigh-jewell/cmx-anonymiser/blob/master/LICENSE)
 file for details.
-
 ### Acknowledgments
 Thanks to [Cisco DevNet sample code cmx ](https://github.com/CiscoDevNet/sample-code-cmx)
 for their CMX sample code repository.
