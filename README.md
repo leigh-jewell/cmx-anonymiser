@@ -142,7 +142,7 @@ This will be in CSV format but I have written it here by rows for easy reading.
 > currentServerTime = 2017-08-29T01:57:48.292+0100   
 > firstLocatedTime = 2017-08-16T16:05:05.953+0100   
 > lastLocatedTime = 2017-08-29T01:57:48.115+0100   
-> maxDetectedRssiApMacAddress = 00:2b:01:00:08:00   
+> maxDetectedRssiApMacAddress = 0f:3b:01:c0:08:20   
 > band = IEEE_802_11_B   
 > rssi = -52   
 > lastHeardInSeconds = 0   
