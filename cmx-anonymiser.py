@@ -35,13 +35,19 @@ if os.path.isfile("config.ini"):
         cmx = config.get('cmx', 'cmx_ip')
         username = config.get('cmx', 'username')
         password = config.get('cmx', 'password')
-        pageSize = config.get('cmx', 'page_size', fallback=1000)
+        timeout = config.get('cmx', 'timeout', fallback=4)
+        timeout = int(timeout)
+        max_retries = config.get('cmx', 'retry', fallback=5)
+        max_retries = int(max_retries)
+        sleep_between_retries = config.get('cmx', 'retry_sleep', fallback=3)
+        sleep_between_retries = int(sleep_between_retries)
         url_clients = config.get('cmx', 'url_clients', fallback="/api/location/v1/clients/")
         url_aps = config.get('cmx', 'url_aps', fallback="/api/config/v1/aps/")
         output_dir = config.get('output', 'output_dir', fallback=os.path.join(os.getcwd(), 'output'))
         log_dir = config.get('output', 'log_dir', fallback=os.path.join(os.getcwd(), 'logs'))
         log_console = config.getboolean('output', 'log_console', fallback=False)
         days = config.get('schedule', 'days', fallback=5)
+        days = int(days)
         schedule = config.get('schedule', 'hours', fallback='9:00,12:00,15:00,18:00')
         salt = config.get('privacy', 'salt', fallback='b1303114888c11e79e6a448500844918')
         configError = False
@@ -81,15 +87,50 @@ def deidentifyMac(mac):
     mac_hashed = hashlib.sha256(salt.encode()+mac.encode()).hexdigest()
     return mac_hashed
 
+def requestCMX(URL, response_dict):
+    # Generic API call to CMX with all the error handling
+    no_data = True
+    number_retries = 1
+    response = requests.Session()
+    while no_data and number_retries <= max_retries:
+        logging("getData: Attempting to request data  from cmx. Attempt number {}".format(number_retries))
+        try:
+            response = requests.get(url = URL, auth = HTTPBasicAuth(username, password), verify=False, timeout=timeout)
+            if response.status_code == 200:
+                no_data = False
+                response_dict['isError'] = False
+        except requests.exceptions.ConnectionError as e:
+            e = str(e)
+            logging("getData: Got connectError from URL requests\n"+e)
+            response_dict['isError'] = True
+            time.sleep(sleep_between_retries)
+        except requests.exceptions.HTTPError as e:
+            e = str(e)
+            logging("getData: Got HTTPError from URL requests\n"+e)
+            response_dict['isError'] = True
+            time.sleep(sleep_between_retries)
+        except requests.exceptions.ConnectTimeout as e:
+            e = str(e)
+            logging("getData: Got connectTimeout from URL requests\n"+e)
+            response_dict['isError'] = True
+            time.sleep(sleep_between_retries)
+        except requests.exceptions.RequestException as e:
+            e = str(e)
+            logging("getData: Got general error RequestException from URL requests\n"+e)
+            response_dict['isError'] = True
+            time.sleep(sleep_between_retries)
+        number_retries += 1
+
+    return [response, response_dict]
+
 def getCMXData():
     # API call to get the client data from the CMX
     URL = url_prefix + cmx + url_clients
     logging('getCMXData: Getting data for:{}'.format(URL))
     # Setup a defaultdict so we can reference keys without errors
     response_dict = defaultdict(list)
-    try:
-        # Send a URL API request to the CMX with a username and password
-        response = requests.get(url = URL, auth = HTTPBasicAuth(username, password), verify=False)
+    response, response_dict = requestCMX(URL, response_dict)
+    if not response_dict['isError']:
         # Check the status code of the result to see if we got something
         logging('getCMXData: Got status code {} from CMX API (200 is good)'.format(response.status_code))
         response_dict['statusCode'] = response.status_code
@@ -156,10 +197,6 @@ def getCMXData():
                                              ])
             # We minus 1 due to header that was added to file
             logging('getCMXData: Got {} records from CMX.'.format(len(response_dict['data'])-1))
-            response_dict['isError'] = False
-    except requests.exceptions.RequestException as e:
-        logging(e)
-        response_dict['isError'] = True
 
     return response_dict
 
@@ -168,8 +205,8 @@ def getCMXAPData():
     URL = url_prefix + cmx + url_aps
     logging('getCMXAPData: Getting data for: {}'.format(URL))
     response_dict = defaultdict(list)
-    try:
-        response = requests.get(url = URL, auth = HTTPBasicAuth(username, password), verify=False)
+    response, response_dict = requestCMX(URL, response_dict)
+    if not response_dict['isError']:
         logging('getCMXAPData: Got status code {} from CMX API (200 is good)'.format(response.status_code))
         response_dict['statusCode'] = response.status_code
         if response.status_code == 200:
@@ -211,10 +248,6 @@ def getCMXAPData():
                           ap['floorIdString']
                          ])
             logging('getCMXAPData: Got {} ap records from CMX.'.format(len(response_dict['data'])-1))
-            response_dict['isError'] = False
-    except requests.exceptions.RequestException as e:
-        logging(e)
-        response_dict['isError'] = True
 
     return response_dict
 
@@ -277,10 +310,8 @@ def main():
             sched_time = [i.split(':') for i in schedule.split(',')]
             # Need current time as scheduler wants to know how many secs to run the function
             today = datetime.now()
-            # Convert days str into integer
-            days_int = int(days)
             # Step through the days and schedule the getData function to run at the appropriate time.
-            for day in range(days_int):
+            for day in range(days):
                 for (sched_hour,sched_min) in sched_time:
                     hr = int(sched_hour)
                     mn = int(sched_min)
