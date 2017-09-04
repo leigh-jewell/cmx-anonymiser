@@ -314,12 +314,16 @@ def main():
             for day in range(days):
                 for (sched_hour,sched_min) in sched_time:
                     hr = int(sched_hour)
-                    mn = int(sched_min)
+                    minute = int(sched_min)
+                    # Need to get correct year month day for days in the future
                     future = datetime.now() + timedelta(days=day)
-                    secs = (future-today).total_seconds()
+                    # Create a new date using the scheduled hours and minutes
+                    future_date = datetime(future.year, future.month, future.day, hr, minute, 0)
+                    # Get the delta between future and todays date and time in seconds so we can schedule
+                    secs = (future_date - today).total_seconds()
                     # For time that is in the future schedule the call of the getData function
                     if secs > 0:
-                        logging('main: getData will be run {} total secs {}'.format(future, secs))
+                        logging('main: getData will be run {} total secs {}'.format(future_date, secs))
                         s.enter(secs, 1, getData)
             # Allow the scheduler to run schedule the jobs to run.
             s.run()
