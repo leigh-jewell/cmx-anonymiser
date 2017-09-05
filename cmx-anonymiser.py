@@ -93,12 +93,16 @@ def requestCMX(URL, response_dict):
     number_retries = 1
     response = requests.Session()
     while no_data and number_retries <= max_retries:
-        logging("getData: Attempting to request data  from cmx. Attempt number {}".format(number_retries))
+        logging("getData: Attempting to request data from cmx. Attempt number {}".format(number_retries))
         try:
             response = requests.get(url = URL, auth = HTTPBasicAuth(username, password), verify=False, timeout=timeout)
             if response.status_code == 200:
                 no_data = False
                 response_dict['isError'] = False
+            else:
+                logging("getData: Got status code {} from CMX, need 200, will retry".format(response.status_code))
+                response_dict['isError'] = True
+                time.sleep(sleep_between_retries)
         except requests.exceptions.ConnectionError as e:
             e = str(e)
             logging("getData: Got connectError from URL requests\n"+e)
@@ -126,7 +130,7 @@ def requestCMX(URL, response_dict):
 def getCMXData():
     # API call to get the client data from the CMX
     URL = url_prefix + cmx + url_clients
-    logging('getCMXData: Getting data for:{}'.format(URL))
+    logging('getCMXData: Getting data for {}'.format(URL))
     # Setup a defaultdict so we can reference keys without errors
     response_dict = defaultdict(list)
     response, response_dict = requestCMX(URL, response_dict)
@@ -196,14 +200,14 @@ def getCMXData():
                                               client['bytesReceived']
                                              ])
             # We minus 1 due to header that was added to file
-            logging('getCMXData: Got {} records from CMX.'.format(len(response_dict['data'])-1))
+            logging('getCMXData: Got {:,} records from CMX.'.format(len(response_dict['data'])-1))
 
     return response_dict
 
 def getCMXAPData():
     # Get the AP data from the CMX
     URL = url_prefix + cmx + url_aps
-    logging('getCMXAPData: Getting data for: {}'.format(URL))
+    logging('getCMXAPData: Getting data for API: {}'.format(URL))
     response_dict = defaultdict(list)
     response, response_dict = requestCMX(URL, response_dict)
     if not response_dict['isError']:
@@ -247,18 +251,18 @@ def getCMXAPData():
                           0, \
                           ap['floorIdString']
                          ])
-            logging('getCMXAPData: Got {} ap records from CMX.'.format(len(response_dict['data'])-1))
+            logging('getCMXAPData: Got {:,} ap records from CMX.'.format(len(response_dict['data'])-1))
 
     return response_dict
 
 def writeFile(data, fileName):
     # Write the data to an appropriate file
-    logging('writeFile:Using {} as output directory'.format(output_dir))
+    logging('writeFile: Using {} as output directory'.format(os.path.abspath(output_dir)))
     if not os.path.exists(output_dir):
         try:
             os.makedirs(output_dir)
         except OSError as e:
-            logging('writeFile:Error - output directory {} does not exist, and cannot create it {}'.format(output_dir, e))
+            logging('writeFile: Error - output directory {} does not exist, and cannot create it {}'.format(output_dir, e))
     if os.path.exists(output_dir):
         # Create a unique file name by appending the date to the end
         fileNameDate = fileName + datetime.strftime(datetime.now(),'-%d-%m-%y-%H-%M-%S-%f.csv')
@@ -271,17 +275,17 @@ def writeFile(data, fileName):
                     writer.writerows(data['data'])
                     logging('writeFile:Finished writing.')
             except IOError as e:
-                logging('writeFile:Error - tried to open file for writing but something went wront {}'.format(e))
+                logging('writeFile: Error - tried to open file for writing but something went wront {}'.format(e))
         else:
-            logging('writeFile:Error - tried to create unique output file name {} but file exists'.format(fileNameDate))
+            logging('writeFile: Error - tried to create unique output file name {} but file exists'.format(fileNameDate))
     else:
-        logging('writeFile: problem with output directory.')
+        logging('writeFile: Tried to create output directory and it should have worked, but there is a problem still.')
     return
 
 def getData():
     # This is the function that gets call by the scheduler
-    logging('getData: Process woken up.')
-    logging('getData:Using CMX:{} and username:{}'.format(cmx, username))
+    logging('getData: Schdule woken up.')
+    logging('getData: Using CMX: {} and username: {}'.format(cmx, username))
 
     ap_data = getCMXAPData()
     if not ap_data['isError']:
@@ -300,11 +304,12 @@ def getData():
 def main():
     # Make sure we read in the config file ok.
     if not configError:
-        logging("main: Process started, scheduling jobs {} days and {} hours".format(days, schedule))
         # If we find now string in schdule we just run one straight away.
         if 'now' in schedule:
+            logging("main: Process started, no scheduling needed, running now.")
             getData()
         else:
+            logging("main: Process started, scheduling jobs {} days and {} hours".format(days, schedule))
             s = sched.scheduler(time.time, time.sleep)
             # Step through all the scheduled 24hr times
             sched_time = [i.split(':') for i in schedule.split(',')]
