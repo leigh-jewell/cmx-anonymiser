@@ -39,7 +39,8 @@ installation:
 | datetime      | To calculate when to schedule the jobs          |
 | os            | To work out the directories to use for output   |
 | sched         | For scheduling the jobs to run                  |
-|time           | For time                                        |
+| time          | For time                                        |
+| math          | For math calculations                           |
 
 You can simply install them with:
 > pip install *module name*
@@ -81,23 +82,26 @@ the CSV files to a 3rd party that they can't easily brute force the mac addfress
 Obviously keep the salt private when sharing the CSV file. The salt
 is just a string so make it whatever you want.
 
-| Config      | Purpose                                            |
-|-------------|----------------------------------------------------|
-| cmx_ip      |Change it to your CMX MSE IP address or hostname    |
-| username    | Username that exists on the CMX                    |
-| password    | Password for the account on the CMX                |
-| timeout     | How long to wait until timeout to CMX              |
-| retry       | How many times to retry on connection failure      |
-| retry_sleep | How long to sleep before trying again after failure|
-| output_dir  | Directory to write the csv files, default output   |
-| log_dir     | Log file directory, default logs                   |
-| log_console | Log to console, default True                       |
-| url_clients | Client API URL, default: /api/location/v1/clients  |
-| url_aps     | AP API URL, default: /api/config/v1/aps            |
-| days        | How many days to collect, default 7                |
-| hours       | 24hr times to run default: 9:00,12:00,15:00,18:00  |
-| hours       | Optional 'now' to run the script right now         |
-| salt        | Random string to avoid hash collisions             |
+| Config           | Purpose                                            |
+|------------------|----------------------------------------------------|
+| cmx_ip           |Change it to your CMX MSE IP address or hostname    |
+| username         | Username that exists on the CMX                    |
+| password         | Password for the account on the CMX                |
+| timeout          | How long to wait until timeout to CMX              |
+| retry            | How many times to retry on connection failure      |
+| retry_sleep      | How long to sleep before trying again after failure                                   |
+| output_dir       | Directory to write the csv files, default output                                      |
+| log_dir          | Log file directory, default logs                                                      |
+| log_console      | Log to console, default True                                                          |
+| url_clients      | Client API URL, default: /api/location/v2/clients                                     |
+| url_client_count | Client API URL, default: /api/location/v2/clients/count                               |
+| page_size        | How many clients to get each request, max 1,000  supported on CMX                     |
+| max_pages        | Maximum client pages to pull back, just in case CMX client count return is very large |
+| url_aps          | AP API URL, default: /api/config/v1/aps                                               |
+| days             | How many days to collect, default 7                                                   |
+| hours            | 24hr times to run default: 9:00,12:00,15:00,18:00                                     |
+| hours            | Optional to set hours to 'now' to run the script right now                            |
+| salt             | Random string to avoid hash collisions                                                |
 
 ## Running a test
 Even without changing the config.ini you can test out the code as the default config
