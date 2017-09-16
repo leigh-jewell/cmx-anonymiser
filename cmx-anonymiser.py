@@ -18,6 +18,7 @@ try:
     from datetime import timedelta
     import os
     import sched, time
+    from math import ceil
 except ImportError:
     print('Error: Missing one of the required modules. Check the docs.')
     sys.exit()
@@ -43,6 +44,13 @@ if os.path.isfile("config.ini"):
         sleep_between_retries = int(sleep_between_retries)
         url_clients = config.get('cmx', 'url_clients', fallback="/api/location/v1/clients/")
         url_aps = config.get('cmx', 'url_aps', fallback="/api/config/v1/aps/")
+        url_client_count = config.get('cmx', 'url_client_count', fallback="/api/location/v2/clients/count")
+        page_size = config.get('cmx', 'page_size', fallback=1000)
+        page_size = int(page_size)
+        if page_size > 1000 or page_size <= 0:
+            page_size = 1000
+        max_pages = config.get('cmx', 'max_pages', fallback=1000)
+        max_pages = int(max_pages)
         output_dir = config.get('output', 'output_dir', fallback=os.path.join(os.getcwd(), 'output'))
         log_dir = config.get('output', 'log_dir', fallback=os.path.join(os.getcwd(), 'logs'))
         log_console = config.getboolean('output', 'log_console', fallback=False)
@@ -127,80 +135,119 @@ def requestCMX(URL, response_dict):
 
     return [response, response_dict]
 
-def getCMXData():
-    # API call to get the client data from the CMX
-    URL = url_prefix + cmx + url_clients
-    logging('getCMXData: Getting data for {}'.format(URL))
+def getClientCount():
+    # API call to get the client count so we know how many pages to pull back
+    URL = url_prefix + cmx + url_client_count
+    logging('getClientCount: Getting client count for {}'.format(URL))
     # Setup a defaultdict so we can reference keys without errors
     response_dict = defaultdict(list)
     response, response_dict = requestCMX(URL, response_dict)
     if not response_dict['isError']:
-        # Check the status code of the result to see if we got something
-        logging('getCMXData: Got status code {} from CMX API (200 is good)'.format(response.status_code))
-        response_dict['statusCode'] = response.status_code
-        if response.status_code == 200:
-            response.encoding = 'utf-8'
-            # Add a header for all the variables
-            response_dict['data'].append(['hash',
-                                         'mapHierarchyString',
-                                          'floorRefId',
-                                          'length',
-                                          'width',
-                                          'x',
-                                          'y',
-                                          'unit',
-                                          'currentlyTracked',
-                                          'confidenceFactor',
-                                          'currentServerTime',
-                                          'firstLocatedTime',
-                                          'lastLocatedTime',
-                                          'maxDetectedRssiApMacAddress',
-                                          'band',
-                                          'rssi',
-                                          'lastHeardInSeconds',
-                                          'networkStatus',
-                                          'changedOn',
-                                          'ssId',
-                                          'band',
-                                          'apMacAddress',
-                                          'dot11Status',
-                                          'manufacturer',
-                                          'detectingControllers',
-                                          'bytesSent',
-                                          'bytesReceived'
-                                         ])
-            # Step through the JSON response pulling out the data
-            for client in response.json():
-                response_dict['data'].append([deidentifyMac(client['macAddress']), \
-                                              client['mapInfo']['mapHierarchyString'], \
-                                              client['mapInfo']['floorRefId'], \
-                                              client['mapInfo']['floorDimension']['length'], \
-                                              client['mapInfo']['floorDimension']['width'], \
-                                              client['mapCoordinate']['x'], \
-                                              client['mapCoordinate']['y'], \
-                                              client['mapCoordinate']['unit'], \
-                                              client['currentlyTracked'], \
-                                              client['confidenceFactor'], \
-                                              client['statistics']['currentServerTime'], \
-                                              client['statistics']['firstLocatedTime'], \
-                                              client['statistics']['lastLocatedTime'], \
-                                              client['statistics']['maxDetectedRssi']['apMacAddress'], \
-                                              client['statistics']['maxDetectedRssi']['band'], \
-                                              client['statistics']['maxDetectedRssi']['rssi'], \
-                                              client['statistics']['maxDetectedRssi']['lastHeardInSeconds'], \
-                                              client['networkStatus'], \
-                                              client['changedOn'], \
-                                              client['ssId'], \
-                                              client['band'], \
-                                              client['apMacAddress'], \
-                                              client['dot11Status'], \
-                                              client['manufacturer'], \
-                                              client['detectingControllers'], \
-                                              client['bytesSent'], \
-                                              client['bytesReceived']
-                                             ])
-            # We minus 1 due to header that was added to file
-            logging('getCMXData: Got {:,} records from CMX.'.format(len(response_dict['data'])-1))
+        # Step through the JSON response pulling out the data
+        client = response.json()
+        try:
+            client_count = int(client['count'])
+        except ValueError as e:
+            logging('getClientCount: integer value not returned from client count'+e)
+            client_count = 0
+            pass  # it was a string, not an int.
+        logging('getClientCount: Got client count of {:,}'.format(client_count))
+    else:
+        logging('getClientCount: Got error response from API call for client count, setting count to zero')
+        client_count = 0
+    return client_count
+
+def getCMXData():
+    # Setup a defaultdict so we can reference keys without errors
+    response_dict = defaultdict(list)
+    need_header = True
+    # API call to get the client data from the CMX
+    client_count = getClientCount()
+    logging('getCMXData: Get client data for {:,} clients'.format(client_count))
+    if client_count <= 0:
+        logging('getCMXData: No clients so nothing to do.')
+    else:
+        # Calculate the number of pages to get all the clients
+        pages = ceil(client_count / page_size)
+        if pages > max_pages:
+            logging('getCMXData: Calculated pages {} > than max pages {}. Will set limit to max pages.'.format(pages, max_pages))
+        # Ensure we don't get too many pages
+        pages = min(pages, max_pages)
+        logging('getCMXData: Calculated {} pages to retrieve.'.format(pages))
+        for page in range(1,pages+1):
+            suffix = '/?page={}&pageSize={}'.format(page, page_size)
+            URL = url_prefix + cmx + url_clients + suffix
+            logging('getCMXData: Getting data for {}'.format(URL))
+            response, response_dict = requestCMX(URL, response_dict)
+            if not response_dict['isError']:
+                # Check the status code of the result to see if we got something
+                logging('getCMXData: Got status code {} from CMX API (200 is good)'.format(response.status_code))
+                response_dict['statusCode'] = response.status_code
+                if response.status_code == 200:
+                    response.encoding = 'utf-8'
+                    if need_header:
+                        need_header = False
+                        # Add a header for all the variables
+                        response_dict['data'].append(['hash',
+                                                     'mapHierarchyString',
+                                                      'floorRefId',
+                                                      'length',
+                                                      'width',
+                                                      'x',
+                                                      'y',
+                                                      'unit',
+                                                      'currentlyTracked',
+                                                      'confidenceFactor',
+                                                      'currentServerTime',
+                                                      'firstLocatedTime',
+                                                      'lastLocatedTime',
+                                                      'maxDetectedRssiApMacAddress',
+                                                      'band',
+                                                      'rssi',
+                                                      'lastHeardInSeconds',
+                                                      'networkStatus',
+                                                      'changedOn',
+                                                      'ssId',
+                                                      'band',
+                                                      'apMacAddress',
+                                                      'dot11Status',
+                                                      'manufacturer',
+                                                      'detectingControllers',
+                                                      'bytesSent',
+                                                      'bytesReceived'
+                                                     ])
+                    # Step through the JSON response pulling out the data
+                    for client in response.json():
+                        response_dict['data'].append([deidentifyMac(client['macAddress']), \
+                                                      client['mapInfo']['mapHierarchyString'], \
+                                                      client['mapInfo']['floorRefId'], \
+                                                      client['mapInfo']['floorDimension']['length'], \
+                                                      client['mapInfo']['floorDimension']['width'], \
+                                                      client['mapCoordinate']['x'], \
+                                                      client['mapCoordinate']['y'], \
+                                                      client['mapCoordinate']['unit'], \
+                                                      client['currentlyTracked'], \
+                                                      client['confidenceFactor'], \
+                                                      client['statistics']['currentServerTime'], \
+                                                      client['statistics']['firstLocatedTime'], \
+                                                      client['statistics']['lastLocatedTime'], \
+                                                      client['statistics']['maxDetectedRssi']['apMacAddress'], \
+                                                      client['statistics']['maxDetectedRssi']['band'], \
+                                                      client['statistics']['maxDetectedRssi']['rssi'], \
+                                                      client['statistics']['maxDetectedRssi']['lastHeardInSeconds'], \
+                                                      client['networkStatus'], \
+                                                      client['changedOn'], \
+                                                      client['ssId'], \
+                                                      client['band'], \
+                                                      client['apMacAddress'], \
+                                                      client['dot11Status'], \
+                                                      client['manufacturer'], \
+                                                      client['detectingControllers'], \
+                                                      client['bytesSent'], \
+                                                      client['bytesReceived']
+                                                     ])
+                    # We minus 1 due to header that was added to file
+            logging('getCMXData: Got {:,} total records from CMX.'.format(len(response_dict['data'])-1))
 
     return response_dict
 
