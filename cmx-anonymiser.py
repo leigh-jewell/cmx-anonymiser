@@ -110,7 +110,8 @@ def requestCMX(URL, response_dict):
             else:
                 logging("getData: Got status code {} from CMX, need 200, will retry".format(response.status_code))
                 response_dict['isError'] = True
-                time.sleep(sleep_between_retries)
+                # As number of retries increases the sleep time will increase to.
+                time.sleep(sleep_between_retries*number_retries)
         except requests.exceptions.ConnectionError as e:
             e = str(e)
             logging("getData: Got connectError from URL requests\n"+e)
@@ -132,7 +133,8 @@ def requestCMX(URL, response_dict):
             response_dict['isError'] = True
             time.sleep(sleep_between_retries)
         number_retries += 1
-
+    if no_data:
+        logging('getData: Something went wrong, no data returned.')
     return [response, response_dict]
 
 def getClientCount():
@@ -247,7 +249,7 @@ def getCMXData():
                                                       client['bytesReceived']
                                                      ])
                     # We minus 1 due to header that was added to file
-            logging('getCMXData: Got {:,} total records from CMX.'.format(len(response_dict['data'])-1))
+            logging('getCMXData: Got {:,} total records from CMX, expecting {:,} clients'.format(len(response_dict['data'])-1, client_count))
 
     return response_dict
 
